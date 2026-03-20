@@ -1,1 +1,609 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Victor's Day Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf8f4;
+    --surface: #ffffff;
+    --card: #f4f1eb;
+    --border: #e8e2d9;
+    --accent: #c84b2f;
+    --accent2: #2f6bc8;
+    --green: #2a7d4f;
+    --amber: #d4820a;
+    --text: #1a1510;
+    --muted: #8a7f72;
+    --light: #b5afa6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; }
+  .app { max-width: 500px; margin: 0 auto; padding-bottom: 80px; }
+
+  header { background: var(--accent); padding: 28px 20px 20px; }
+  .greeting { font-family: 'DM Serif Display', serif; font-size: 24px; color: #fff; line-height: 1.2; }
+  .greeting em { font-style: italic; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .date-badge { background: rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 10px; font-size: 10px; color: rgba(255,255,255,0.9); letter-spacing: 0.08em; text-align: right; }
+  .sleep-status { font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 5px; }
+
+  .tabs { display: flex; background: var(--surface); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 10; }
+  .tab { flex: 1; padding: 11px 2px; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .section { display: none; padding: 20px; }
+  .section.active { display: block; }
+  .section-head { font-family: 'DM Serif Display', serif; font-size: 20px; margin-bottom: 3px; }
+  .section-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 18px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+  .card-title { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+
+  .sleep-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .sleep-input-block label { display: block; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .time-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 18px; color: var(--text); outline: none; transition: border-color 0.2s; }
+  .time-input:focus { border-color: var(--accent); }
+  .quality-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .quality-btns { display: flex; gap: 8px; }
+  .q-btn { flex: 1; padding: 8px 4px; border: 1px solid var(--border); border-radius: 8px; background: none; font-size: 16px; cursor: pointer; transition: all 0.15s; }
+  .q-btn.selected { background: var(--card); border-color: var(--accent); transform: scale(1.1); }
+  .sleep-stats { display: flex; gap: 10px; margin-top: 14px; }
+  .sleep-stat { flex: 1; background: var(--card); border-radius: 8px; padding: 10px; text-align: center; }
+  .sleep-stat-num { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--accent); }
+  .sleep-stat-label { font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+  .target-ind { margin-top: 10px; padding: 8px 12px; border-radius: 8px; font-size: 11px; text-align: center; display: none; }
+  .target-ind.good { background: rgba(42,125,79,0.1); color: var(--green); display: block; }
+  .target-ind.bad { background: rgba(200,75,47,0.1); color: var(--accent); display: block; }
+  .target-ind.ok { background: rgba(212,130,10,0.1); color: var(--amber); display: block; }
+
+  .chart-wrap { display: flex; gap: 6px; align-items: flex-end; height: 60px; margin-top: 8px; }
+  .chart-bar { flex: 1; border-radius: 4px 4px 0 0; min-height: 4px; }
+  .chart-labels { display: flex; gap: 6px; margin-top: 4px; }
+  .chart-labels span { flex: 1; font-size: 9px; color: var(--muted); text-align: center; }
+
+  .routine-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+  .routine-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .routine-item:first-child { padding-top: 0; }
+  .r-time { font-size: 10px; color: var(--muted); width: 42px; flex-shrink: 0; padding-top: 2px; }
+  .r-circle { width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; margin-top: 1px; font-size: 11px; }
+  .r-circle.done { background: var(--green); border-color: var(--green); color: white; }
+  .r-info { flex: 1; }
+  .r-name { font-size: 13px; line-height: 1.3; }
+  .r-name.crossed { color: var(--muted); text-decoration: line-through; }
+  .r-desc { font-size: 10px; color: var(--light); margin-top: 2px; }
+  .prog-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+  .prog-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.4s; }
+  .prog-text { font-size: 10px; color: var(--muted); margin-top: 5px; text-align: right; }
+
+  .block-item { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+  .block-item.is-now { border-color: var(--accent2); background: rgba(47,107,200,0.04); }
+  .block-item.is-done { background: rgba(42,125,79,0.04); border-color: rgba(42,125,79,0.3); }
+  .block-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .b-time { font-size: 9px; background: var(--card); border: 1px solid var(--border); border-radius: 5px; padding: 3px 7px; color: var(--muted); }
+  .b-cat { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 7px; border-radius: 5px; }
+  .cat-deep { background: rgba(47,107,200,0.1); color: var(--accent2); }
+  .cat-health { background: rgba(42,125,79,0.1); color: var(--green); }
+  .cat-work { background: rgba(212,130,10,0.1); color: var(--amber); }
+  .cat-break { background: var(--card); color: var(--muted); }
+  .cat-personal { background: rgba(200,75,47,0.1); color: var(--accent); }
+  .now-dot { font-size: 9px; color: var(--accent2); }
+  .b-input { width: 100%; background: none; border: none; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text); outline: none; padding: 2px 0; }
+  .b-input::placeholder { color: var(--light); }
+  .b-done-btn { margin-top: 8px; font-size: 10px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: none; color: var(--muted); cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.15s; }
+  .b-done-btn:hover { border-color: var(--green); color: var(--green); }
+  .b-done-btn.done { background: var(--green); border-color: var(--green); color: white; }
+
+  .app-card { border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .app-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .app-icon { font-size: 22px; }
+  .app-name { font-family: 'DM Serif Display', serif; font-size: 16px; }
+  .app-rule { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .app-count { margin-left: auto; text-align: right; }
+  .count-num { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--accent); }
+  .count-lbl { font-size: 9px; color: var(--muted); }
+  .int-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); outline: none; margin-bottom: 8px; transition: border-color 0.2s; }
+  .int-input:focus { border-color: var(--accent2); }
+  .int-input::placeholder { color: var(--light); }
+  .log-btn { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: none; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .log-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .launch-hist { margin-top: 10px; max-height: 110px; overflow-y: auto; }
+  .l-entry { font-size: 10px; color: var(--muted); padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; gap: 8px; }
+  .l-entry:last-child { border-bottom: none; }
+  .l-time { color: var(--light); flex-shrink: 0; }
+
+  .score-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .score-btn { width: calc(20% - 5px); padding: 10px 4px; border: 1px solid var(--border); border-radius: 8px; background: none; font-family: 'DM Serif Display', serif; font-size: 15px; cursor: pointer; transition: all 0.15s; color: var(--muted); text-align: center; }
+  .score-btn.selected { background: var(--accent); border-color: var(--accent); color: white; }
+  .r-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; }
+  .r-area { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); resize: none; height: 70px; outline: none; transition: border-color 0.2s; line-height: 1.6; margin-bottom: 14px; }
+  .r-area:focus { border-color: var(--accent); }
+  .r-area::placeholder { color: var(--light); }
+  .tmr-block { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+  .tmr-time { font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+  .tmr-input { width: 100%; background: none; border: none; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); outline: none; }
+  .tmr-input::placeholder { color: var(--light); }
+
+  .save-btn { width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: white; cursor: pointer; margin-top: 8px; transition: all 0.15s; }
+  .save-btn:hover { background: #b03d24; }
+  .save-btn:active { transform: scale(0.98); }
+  .winddown { background: rgba(200,75,47,0.08); border: 1px solid rgba(200,75,47,0.2); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: var(--accent); margin-bottom: 14px; line-height: 1.6; display: none; }
+  .winddown.show { display: block; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: var(--bg); font-family: 'DM Mono', monospace; font-size: 11px; padding: 10px 20px; border-radius: 40px; z-index: 999; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="header-row">
+      <div>
+        <div class="greeting">Good <em id="tod">morning</em>,<br>Victor.</div>
+        <div class="sleep-status" id="sleepStatus">Log last night's sleep below</div>
+      </div>
+      <div class="date-badge" id="dateBadge"></div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="go('sleep',this)">Sleep</button>
+    <button class="tab" onclick="go('morning',this)">Morning</button>
+    <button class="tab" onclick="go('blocks',this)">Blocks</button>
+    <button class="tab" onclick="go('apps',this)">Apps</button>
+    <button class="tab" onclick="go('night',this)">Night</button>
+  </div>
+
+  <!-- SLEEP -->
+  <div class="section active" id="sec-sleep">
+    <div class="section-head">Sleep Log</div>
+    <div class="section-sub">SUN-THU: 11PM to 6AM &nbsp;|&nbsp; FRI-SAT: FLEXIBLE</div>
+    <div class="winddown" id="winddown">Wind-down time! It is close to 11pm. Put the phone down soon.</div>
+    <div class="card">
+      <div class="card-title">Last Night</div>
+      <div class="sleep-grid">
+        <div class="sleep-input-block">
+          <label>Slept at</label>
+          <input type="time" class="time-input" id="sleepTime" value="23:00" oninput="calcSleep()">
+        </div>
+        <div class="sleep-input-block">
+          <label>Woke at</label>
+          <input type="time" class="time-input" id="wakeTime" value="06:00" oninput="calcSleep()">
+        </div>
+      </div>
+      <div class="quality-label">Sleep quality</div>
+      <div class="quality-btns">
+        <button class="q-btn" id="q1" onclick="pickQ(1)">Bad</button>
+        <button class="q-btn" id="q2" onclick="pickQ(2)">Poor</button>
+        <button class="q-btn" id="q3" onclick="pickQ(3)">Ok</button>
+        <button class="q-btn" id="q4" onclick="pickQ(4)">Good</button>
+        <button class="q-btn" id="q5" onclick="pickQ(5)">Great</button>
+      </div>
+      <div class="sleep-stats">
+        <div class="sleep-stat"><div class="sleep-stat-num" id="statHrs">--</div><div class="sleep-stat-label">Hours</div></div>
+        <div class="sleep-stat"><div class="sleep-stat-num" id="statAvg">--</div><div class="sleep-stat-label">7d avg</div></div>
+        <div class="sleep-stat"><div class="sleep-stat-num" id="statStreak">0</div><div class="sleep-stat-label">Streak</div></div>
+      </div>
+      <div class="target-ind" id="targetInd"></div>
+      <button class="save-btn" onclick="saveSleep()">Save Sleep Log</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Last 7 Days</div>
+      <div class="chart-wrap" id="chartBars"></div>
+      <div class="chart-labels" id="chartLabels"></div>
+    </div>
+  </div>
+
+  <!-- MORNING -->
+  <div class="section" id="sec-morning">
+    <div class="section-head">Morning Routine</div>
+    <div class="section-sub">TARGET: 6AM WAKE - NO PHONE UNTIL 9AM</div>
+    <div class="card">
+      <div class="card-title">Today's Routine</div>
+      <div id="routineList"></div>
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+      <div class="prog-text" id="progText">0 / 7 done</div>
+    </div>
+  </div>
+
+  <!-- BLOCKS -->
+  <div class="section" id="sec-blocks">
+    <div class="section-head">Day Blocks</div>
+    <div class="section-sub">FILL IN THE NIGHT BEFORE - YOUR PLAN FOR TODAY</div>
+    <div id="blocksList"></div>
+  </div>
+
+  <!-- APPS -->
+  <div class="section" id="sec-apps">
+    <div class="section-head">App Intentions</div>
+    <div class="section-sub">STATE WHY BEFORE YOU OPEN IT</div>
+    <div class="app-card">
+      <div class="app-head">
+        <div class="app-icon">💬</div>
+        <div><div class="app-name">WhatsApp</div><div class="app-rule">Intentional only - max 4x per day</div></div>
+        <div class="app-count"><div class="count-num" id="waNum">0</div><div class="count-lbl">today</div></div>
+      </div>
+      <input type="text" class="int-input" id="waReason" placeholder="Why are you opening WhatsApp?">
+      <button class="log-btn" onclick="logApp('wa')">Log WhatsApp Launch</button>
+      <div class="launch-hist" id="waLog"></div>
+    </div>
+    <div class="app-card">
+      <div class="app-head">
+        <div class="app-icon">🎵</div>
+        <div><div class="app-name">TikTok</div><div class="app-rule">Product search ONLY - not for entertainment</div></div>
+        <div class="app-count"><div class="count-num" id="ttNum">0</div><div class="count-lbl">today</div></div>
+      </div>
+      <input type="text" class="int-input" id="ttReason" placeholder="What product are you searching for?">
+      <button class="log-btn" onclick="logApp('tt')">Log TikTok Launch</button>
+      <div class="launch-hist" id="ttLog"></div>
+    </div>
+  </div>
+
+  <!-- NIGHT -->
+  <div class="section" id="sec-night">
+    <div class="section-head">Night Reflection</div>
+    <div class="section-sub">5 MINS BEFORE BED - DON'T SKIP THIS</div>
+    <div class="card">
+      <div class="card-title">Rate Today (1-10)</div>
+      <div class="score-row" id="scoreRow"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Reflect</div>
+      <label class="r-label">What went well today?</label>
+      <textarea class="r-area" id="rWell" placeholder="At least one win, no matter how small..."></textarea>
+      <label class="r-label">What did I avoid or procrastinate on?</label>
+      <textarea class="r-area" id="rAvoid" placeholder="Be honest with yourself..."></textarea>
+      <label class="r-label">Why did I pick up my phone aimlessly?</label>
+      <textarea class="r-area" id="rPhone" placeholder="Boredom? Anxiety? Habit?"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">Plan Tomorrow Now</div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Set your tasks so you wake up with a plan</p>
+      <div id="tomorrowList"></div>
+    </div>
+    <button class="save-btn" onclick="saveNight()">Save Reflection + Set Tomorrow</button>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+var ROUTINE = [
+  {time:'6:00', name:'Wake up + Prayer',    desc:'No phone. Just you and God.'},
+  {time:'6:15', name:'German - 5 mins',     desc:'Duolingo or flashcards. Quick win.'},
+  {time:'6:20', name:'Exercise',             desc:'30-40 mins. Already your habit!'},
+  {time:'7:00', name:'Bath + get ready',     desc:'Clean body, clear mind.'},
+  {time:'7:30', name:'Breakfast',            desc:'Eat. No phone at the table.'},
+  {time:'7:45', name:'Review today blocks',  desc:'Open Blocks tab, see your plan.'},
+  {time:'8:00', name:'Deep work begins',     desc:'Node.js / Desispace / Uni.'}
+];
+
+var BLOCKS = [
+  {start:360,  end:480,  label:'Morning Routine', cat:'health',   ph:'Prayer, exercise, bath'},
+  {start:480,  end:600,  label:'Deep Work 1',      cat:'deep',     ph:'e.g. Node.js - Express middleware chapter'},
+  {start:600,  end:615,  label:'Break',            cat:'break',    ph:'Stretch, water'},
+  {start:615,  end:720,  label:'Work Block 2',     cat:'work',     ph:'e.g. Image annotation job'},
+  {start:720,  end:780,  label:'Lunch',            cat:'break',    ph:'Eat. Rest. No scrolling.'},
+  {start:780,  end:900,  label:'Deep Work 3',      cat:'deep',     ph:'e.g. Desispace - prospect 3 businesses'},
+  {start:900,  end:915,  label:'Break',            cat:'break',    ph:'Walk outside if possible'},
+  {start:915,  end:1020, label:'Uni / Learning',   cat:'deep',     ph:'e.g. CS coursework or cybersecurity'},
+  {start:1020, end:1080, label:'Personal',         cat:'personal', ph:'Piano practice / free time'},
+  {start:1080, end:1140, label:'Evening',          cat:'break',    ph:'Dinner, family time'},
+  {start:1140, end:1260, label:'Light Work',       cat:'work',     ph:'Typing practice / reading / German'},
+  {start:1260, end:1320, label:'Wind Down',        cat:'break',    ph:'No phone. Prepare for tomorrow.'},
+  {start:1320, end:1380, label:'Night Reflection', cat:'personal', ph:'Fill in Night tab then sleep.'}
+];
+
+function load() {
+  try { var d = localStorage.getItem('vplan'); return d ? JSON.parse(d) : blank(); }
+  catch(e) { return blank(); }
+}
+function blank() {
+  return {sleepLogs:{}, routineDone:{}, blockTasks:{}, blockDone:{}, waLog:{}, ttLog:{}, reflections:{}, tomorrowTasks:{}, sleepStreak:0};
+}
+function save(s) { try { localStorage.setItem('vplan', JSON.stringify(s)); } catch(e) {} }
+function today() { return new Date().toISOString().slice(0,10); }
+function nowMins() { var d = new Date(); return d.getHours()*60 + d.getMinutes(); }
+function isWeekend() { var d = new Date().getDay(); return d===5 || d===6; }
+
+function renderHeader() {
+  var h = new Date().getHours();
+  document.getElementById('tod').textContent = h<12?'morning':h<17?'afternoon':'evening';
+  var d = new Date();
+  document.getElementById('dateBadge').innerHTML = DAYS[d.getDay()]+', '+d.getDate()+' '+MONTHS[d.getMonth()]+'<br>'+(isWeekend()?'Weekend':'Weekday');
+  var s = load();
+  var log = s.sleepLogs[today()];
+  document.getElementById('sleepStatus').textContent = log ? 'Woke at '+log.wake+' - '+log.hrs+'h sleep' : "Log last night's sleep below";
+  if (!isWeekend() && nowMins() >= 21*60 && nowMins() < 23*60) {
+    document.getElementById('winddown').classList.add('show');
+  }
+}
+
+var selQ = 0;
+function pickQ(n) {
+  selQ = n;
+  for (var i=1; i<=5; i++) {
+    document.getElementById('q'+i).classList.toggle('selected', i===n);
+  }
+}
+
+function calcSleep() {
+  var st = document.getElementById('sleepTime').value;
+  var wt = document.getElementById('wakeTime').value;
+  if (!st || !wt) return;
+  var sp = st.split(':'), wp = wt.split(':');
+  var sleepM = parseInt(sp[0])*60 + parseInt(sp[1]);
+  var wakeM  = parseInt(wp[0])*60 + parseInt(wp[1]);
+  if (wakeM <= sleepM) wakeM += 1440;
+  var hrs = ((wakeM - sleepM) / 60).toFixed(1);
+  document.getElementById('statHrs').textContent = hrs + 'h';
+  var ind = document.getElementById('targetInd');
+  ind.className = 'target-ind';
+  var h = parseFloat(hrs);
+  if (h >= 7)      { ind.className = 'target-ind good'; ind.textContent = 'Great sleep! On target.'; }
+  else if (h >= 6) { ind.className = 'target-ind ok';   ind.textContent = 'Decent. Aim for 7h tonight.'; }
+  else             { ind.className = 'target-ind bad';   ind.textContent = 'Only '+hrs+'h - sleep by 11pm tonight.'; }
+}
+
+function saveSleep() {
+  var st = document.getElementById('sleepTime').value;
+  var wt = document.getElementById('wakeTime').value;
+  if (!st || !wt) { toast('Enter sleep and wake times'); return; }
+  var sp = st.split(':'), wp = wt.split(':');
+  var sleepM = parseInt(sp[0])*60 + parseInt(sp[1]);
+  var wakeM  = parseInt(wp[0])*60 + parseInt(wp[1]);
+  if (wakeM <= sleepM) wakeM += 1440;
+  var hrs = ((wakeM - sleepM) / 60).toFixed(1);
+  var s = load();
+  var t = today();
+  s.sleepLogs[t] = {sleep:st, wake:wt, hrs:hrs, q:selQ};
+  var onTarget = parseFloat(hrs) >= 6.5 && (!isWeekend() ? wt <= '06:05' : true);
+  var yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+  var yKey = yesterday.toISOString().slice(0,10);
+  s.sleepStreak = onTarget ? ((s.sleepLogs[yKey] ? (s.sleepStreak||0) : 0) + 1) : 0;
+  save(s);
+  renderHeader();
+  renderChart();
+  document.getElementById('statStreak').textContent = s.sleepStreak || 0;
+  toast('Sleep logged!');
+}
+
+function renderChart() {
+  var s = load();
+  var bars = document.getElementById('chartBars');
+  var lbls = document.getElementById('chartLabels');
+  bars.innerHTML = ''; lbls.innerHTML = '';
+  var total = 0, count = 0;
+  for (var i=6; i>=0; i--) {
+    var d = new Date(); d.setDate(d.getDate()-i);
+    var key = d.toISOString().slice(0,10);
+    var log = s.sleepLogs[key];
+    var hrs = log ? parseFloat(log.hrs) : 0;
+    if (hrs > 0) { total += hrs; count++; }
+    var pct = Math.min(hrs/10, 1);
+    var col = hrs>=7 ? 'var(--green)' : hrs>=6 ? 'var(--amber)' : hrs>0 ? 'var(--accent)' : 'var(--border)';
+    var bar = document.createElement('div');
+    bar.className = 'chart-bar';
+    bar.style.flex = '1';
+    bar.style.background = col;
+    bar.style.height = Math.max(pct*100, 4) + '%';
+    bar.title = DAYS[d.getDay()] + ': ' + (hrs ? hrs+'h' : 'no data');
+    bars.appendChild(bar);
+    var lbl = document.createElement('span');
+    lbl.textContent = DAYS[d.getDay()].slice(0,1);
+    lbls.appendChild(lbl);
+  }
+  if (count > 0) document.getElementById('statAvg').textContent = (total/count).toFixed(1) + 'h';
+  document.getElementById('statStreak').textContent = (s.sleepStreak || 0);
+}
+
+function renderRoutine() {
+  var s = load();
+  var done = s.routineDone[today()] || {};
+  var list = document.getElementById('routineList');
+  list.innerHTML = '';
+  ROUTINE.forEach(function(r, i) {
+    var isDone = !!done[i];
+    var div = document.createElement('div');
+    div.className = 'routine-item';
+    div.onclick = (function(idx) { return function() { toggleRoutine(idx); }; })(i);
+    div.innerHTML = '<div class="r-time">'+r.time+'</div>'
+      + '<div class="r-circle'+(isDone?' done':'')+'">'+( isDone ? '&#10003;' : '' )+'</div>'
+      + '<div class="r-info">'
+      +   '<div class="r-name'+(isDone?' crossed':'')+'">'+r.name+'</div>'
+      +   '<div class="r-desc">'+r.desc+'</div>'
+      + '</div>';
+    list.appendChild(div);
+  });
+  var count = 0;
+  for (var k in done) { if (done[k]) count++; }
+  var pct = Math.round(count / ROUTINE.length * 100);
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progText').textContent = count + ' / ' + ROUTINE.length + ' done';
+}
+
+function toggleRoutine(i) {
+  var s = load();
+  var t = today();
+  if (!s.routineDone[t]) s.routineDone[t] = {};
+  s.routineDone[t][i] = !s.routineDone[t][i];
+  save(s);
+  renderRoutine();
+  var count = 0;
+  for (var k in s.routineDone[t]) { if (s.routineDone[t][k]) count++; }
+  if (count === ROUTINE.length) toast('Morning routine complete!');
+}
+
+function renderBlocks() {
+  var s = load();
+  var tasks = s.blockTasks[today()] || {};
+  var done  = s.blockDone[today()] || {};
+  var curr  = nowMins();
+  var list  = document.getElementById('blocksList');
+  list.innerHTML = '';
+  BLOCKS.forEach(function(b, i) {
+    var isNow  = curr >= b.start && curr < b.end;
+    var isDone = !!done[i];
+    var sh = Math.floor(b.start/60), sm = b.start%60;
+    var eh = Math.floor(b.end/60),   em = b.end%60;
+    var ts = (sh>12?sh-12:sh)+':'+(sm<10?'0'+sm:sm)+(sh>=12?'pm':'am')
+           + ' - '
+           + (eh>12?eh-12:eh)+':'+(em<10?'0'+em:em)+(eh>=12?'pm':'am');
+    var div = document.createElement('div');
+    div.className = 'block-item' + (isNow?' is-now':'') + (isDone?' is-done':'');
+    var safeVal = (tasks[i]||'').replace(/"/g,'&quot;');
+    div.innerHTML =
+      '<div class="block-head">'
+      + '<span class="b-time">'+ts+'</span>'
+      + '<span class="b-cat cat-'+b.cat+'">'+b.label+'</span>'
+      + (isNow ? '<span class="now-dot">NOW</span>' : '')
+      + '</div>'
+      + '<input type="text" class="b-input" placeholder="'+b.ph+'" value="'+safeVal+'" oninput="saveBlock('+i+',this.value)">'
+      + '<br><button class="b-done-btn'+(isDone?' done':'')+'" onclick="toggleBlock('+i+')">'+(isDone?'Done':'Mark done')+'</button>';
+    list.appendChild(div);
+  });
+}
+
+function saveBlock(i, val) {
+  var s = load(), t = today();
+  if (!s.blockTasks[t]) s.blockTasks[t] = {};
+  s.blockTasks[t][i] = val;
+  save(s);
+}
+
+function toggleBlock(i) {
+  var s = load(), t = today();
+  if (!s.blockDone[t]) s.blockDone[t] = {};
+  s.blockDone[t][i] = !s.blockDone[t][i];
+  save(s);
+  renderBlocks();
+}
+
+function logApp(app) {
+  var inputId = app==='wa' ? 'waReason' : 'ttReason';
+  var reason = document.getElementById(inputId).value.trim();
+  if (!reason) { toast('State your reason first!'); return; }
+  var s = load(), t = today();
+  if (!s.waLog) s.waLog = {};
+  if (!s.ttLog) s.ttLog = {};
+  var key = app==='wa' ? 'waLog' : 'ttLog';
+  if (!s[key][t]) s[key][t] = [];
+  var now = new Date();
+  var ts = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  s[key][t].push({time:ts, reason:reason});
+  save(s);
+  document.getElementById(inputId).value = '';
+  renderApps();
+  var count = s[key][t].length;
+  if (app==='wa' && count > 4) toast('Warning: '+count+' WhatsApp opens today!');
+  else if (app==='tt') toast('TikTok logged. Keep it quick!');
+  else toast('Logged!');
+}
+
+function renderApps() {
+  var s = load(), t = today();
+  var wa = (s.waLog && s.waLog[t]) || [];
+  var tt = (s.ttLog && s.ttLog[t]) || [];
+  document.getElementById('waNum').textContent = wa.length;
+  document.getElementById('ttNum').textContent = tt.length;
+  document.getElementById('waLog').innerHTML = wa.slice().reverse().map(function(l) {
+    return '<div class="l-entry"><span class="l-time">'+l.time+'</span><span>'+l.reason+'</span></div>';
+  }).join('');
+  document.getElementById('ttLog').innerHTML = tt.slice().reverse().map(function(l) {
+    return '<div class="l-entry"><span class="l-time">'+l.time+'</span><span>'+l.reason+'</span></div>';
+  }).join('');
+}
+
+var selScore = 0;
+function renderScores() {
+  var row = document.getElementById('scoreRow');
+  row.innerHTML = '';
+  for (var i=1; i<=10; i++) {
+    (function(n) {
+      var btn = document.createElement('button');
+      btn.className = 'score-btn' + (selScore===n ? ' selected' : '');
+      btn.textContent = n;
+      btn.onclick = function() { selScore = n; renderScores(); };
+      row.appendChild(btn);
+    })(i);
+  }
+}
+
+function renderTomorrow() {
+  var s = load();
+  var tasks = s.tomorrowTasks || {};
+  var list = document.getElementById('tomorrowList');
+  list.innerHTML = '';
+  var deepBlocks = BLOCKS.filter(function(b) { return b.cat==='deep' || b.cat==='work'; });
+  deepBlocks.forEach(function(b, i) {
+    var sh = Math.floor(b.start/60), sm = b.start%60;
+    var ts = (sh>12?sh-12:sh)+':'+(sm<10?'0'+sm:sm)+(sh>=12?'pm':'am') + ' - ' + b.label;
+    var safeVal = (tasks[i]||'').replace(/"/g,'&quot;');
+    var div = document.createElement('div');
+    div.className = 'tmr-block';
+    div.innerHTML = '<div class="tmr-time">'+ts+'</div>'
+      + '<input type="text" class="tmr-input" placeholder="'+b.ph+'" value="'+safeVal+'" oninput="saveTmr('+i+',this.value)">';
+    list.appendChild(div);
+  });
+}
+
+function saveTmr(i, val) {
+  var s = load();
+  if (!s.tomorrowTasks) s.tomorrowTasks = {};
+  s.tomorrowTasks[i] = val;
+  save(s);
+}
+
+function saveNight() {
+  var s = load(), t = today();
+  s.reflections[t] = {
+    score: selScore,
+    well:  document.getElementById('rWell').value,
+    avoid: document.getElementById('rAvoid').value,
+    phone: document.getElementById('rPhone').value
+  };
+  var tmr = new Date(); tmr.setDate(tmr.getDate()+1);
+  var tmrKey = tmr.toISOString().slice(0,10);
+  if (!s.blockTasks[tmrKey]) s.blockTasks[tmrKey] = {};
+  var deepBlocks = BLOCKS.filter(function(b) { return b.cat==='deep' || b.cat==='work'; });
+  deepBlocks.forEach(function(b, i) {
+    if (s.tomorrowTasks && s.tomorrowTasks[i]) {
+      var idx = BLOCKS.indexOf(b);
+      s.blockTasks[tmrKey][idx] = s.tomorrowTasks[i];
+    }
+  });
+  save(s);
+  toast('Reflection saved. Sleep well!');
+}
+
+function go(tab, btn) {
+  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('sec-'+tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab==='morning') renderRoutine();
+  if (tab==='blocks')  renderBlocks();
+  if (tab==='apps')    renderApps();
+  if (tab==='night')   { renderScores(); renderTomorrow(); }
+}
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2600);
+}
+
+// Init
+renderHeader();
+renderChart();
+calcSleep();
+</script>
+</body>
+</html>
